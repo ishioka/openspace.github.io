@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業版ふるさと納税：新富町 vs 浜松市 インタラクティブ分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony (Slate/Stone neutrals, Teal accent) -->
+    <!-- Application Structure Plan: The SPA is designed as a tabbed, side-by-side comparative dashboard. This structure was chosen to directly contrast Shintomi and Hamamatsu across key areas (performance, organization, projects, strategy), making the reasons for the donation gap immediately apparent. Users can navigate through different facets of the analysis via tabs, with each section maintaining the comparative layout to reinforce the core message. This is more engaging and intuitive for understanding the complex analysis than a linear report format. The new AI feature is integrated into the "Conclusion and Recommendations" tab, providing actionable insights directly linked to the analysis. -->
+    <!-- Visualization & Content Choices: 
+        1. Performance Gap -> Bar Chart (Chart.js): To visually dramatize the huge difference in donations. Instantly understandable.
+        2. Organizational Structure -> HTML/CSS Diagram: To clearly illustrate the agile external foundation vs. the traditional internal government department. More effective than text alone.
+        3. Project Appeal -> Interactive Cards: To allow users to *feel* the difference between concrete, story-driven projects and abstract policy descriptions.
+        4. Strategy & Recommendations -> Accordion lists: To present detailed findings and proposals in a clean, digestible format.
+        5. AI Assistant for Project Ideas (Gemini API): Integrated into the 'Conclusions' tab, this feature allows users to generate new, concrete project ideas for Hamamatsu, leveraging the LLM's ability to synthesize the comparative analysis and provide actionable recommendations. This enhances engagement and directly addresses a key challenge identified in the report.
+        All choices prioritize clarity, user engagement, and direct comparison, adhering to the designed structure. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .tab-active {
+            border-color: #0d9488; /* teal-600 */
+            color: #0d9488;
+            background-color: #ccfbf1; /* teal-100 */
+        }
+        .tab-inactive {
+            border-color: transparent;
+            color: #475569; /* slate-600 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 40vh;
+            max-height: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 800px;
+        }
+        .kpi-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .comparison-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .comparison-header {
+            padding: 1rem 1.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .shintomi-header { background-color: #fff7ed; border-bottom: 2px solid #fb923c; color: #c2410c; }
+        .hamamatsu-header { background-color: #eff6ff; border-bottom: 2px solid #60a5fa; color: #1e40af; }
+        .content-hidden { display: none; }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0d9488; /* teal-600 */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-slate-700">
+
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-800 mb-2">企業版ふるさと納税、なぜ生まれる「100倍」の差？</h1>
+            <p class="text-lg text-slate-600">宮崎県新富町と浜松市の事例から、成功と課題の要因をインタラクティブに分析します。</p>
+        </header>
+
+        <main>
+            <!-- Key Performance Indicators -->
+            <section id="kpi" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                <div class="kpi-card border-l-4 border-orange-400">
+                    <h3 class="text-lg font-bold text-orange-700">宮崎県新富町</h3>
+                    <p class="text-4xl font-bold text-slate-800 mt-2">2億円<span class="text-2xl text-slate-500">以上/年</span></p>
+                    <p class="text-slate-500 mt-2">令和3年度以降、継続的に巨額の寄附を獲得。専門組織による戦略的なアプローチが奏功。</p>
+                </div>
+                <div class="kpi-card border-l-4 border-blue-400">
+                    <h3 class="text-lg font-bold text-blue-700">浜松市</h3>
+                    <p class="text-4xl font-bold text-slate-800 mt-2">低水準<span class="text-2xl text-slate-500">（数百万円規模）</span></p>
+                    <p class="text-slate-500 mt-2">個人版では全国トップクラスの実績を誇るも、企業版では苦戦。アプローチに課題か。</p>
+                </div>
+            </section>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex justify-center border-b border-slate-200 mb-8" id="nav-tabs">
+                <button data-tab="1" class="tab-button text-sm md:text-base font-medium py-3 px-4 md:px-6 border-b-2 transition-colors duration-300 tab-active">実績比較</button>
+                <button data-tab="2" class="tab-button text-sm md:text-base font-medium py-3 px-4 md:px-6 border-b-2 transition-colors duration-300 tab-inactive">体制の比較</button>
+                <button data-tab="3" class="tab-button text-sm md:text-base font-medium py-3 px-4 md:px-6 border-b-2 transition-colors duration-300 tab-inactive">プロジェクトの魅力</button>
+                <button data-tab="4" class="tab-button text-sm md:text-base font-medium py-3 px-4 md:px-6 border-b-2 transition-colors duration-300 tab-inactive">結論と提言</button>
+            </nav>
+
+            <!-- Tab Content -->
+            <div id="tab-contents">
+                <!-- Tab 1: Performance Comparison -->
+                <section id="tab-content-1" class="tab-content">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-2xl font-bold text-center text-slate-800 mb-2">寄附額の圧倒的格差</h2>
+                        <p class="text-center text-slate-500 mb-6">令和2年度の税制改正後、新富町が飛躍的に寄附額を伸ばした一方、浜松市は低迷が続いています。</p>
+                        <div class="chart-container">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                        <p class="text-xs text-slate-400 text-center mt-4">※浜松市の寄附総額は非公表のため、公表されている最大寄附額（令和4年度:1,000万円）等を参考に作成した参考値です。実際の総額とは異なります。</p>
+                    </div>
+                </section>
+
+                <!-- Tab 2: Organizational Structure Comparison -->
+                <section id="tab-content-2" class="tab-content content-hidden">
+                     <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-slate-800">成功の鍵は「推進体制」にあり</h2>
+                        <p class="text-slate-500">新富町はビジネス視点を持つ外部専門組織が牽引。一方、浜松市は行政組織が窓口を担当。</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="comparison-card">
+                            <div class="shintomi-header">宮崎県新富町</div>
+                            <div class="p-6 flex-grow flex flex-col justify-center items-center bg-white">
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-slate-500 mb-2">行政 (新富町)</div>
+                                    <div class="text-4xl my-2">連携 →</div>
+                                    <div class="p-6 bg-orange-50 rounded-lg border-2 border-dashed border-orange-300">
+                                        <h4 class="text-xl font-bold text-orange-800">こゆ財団</h4>
+                                        <p class="text-sm font-bold text-orange-600 mt-1">（地域商社）</p>
+                                        <div class="mt-4 space-y-2 text-left">
+                                            <p class="flex items-center"><span class="text-orange-500 mr-2">✓</span> ビジネス視点の事業開発</p>
+                                            <p class="flex items-center"><span class="text-orange-500 mr-2">✓</span> 専門人材（CMO）による広報</p>
+                                            <p class="flex items-center"><span class="text-orange-500 mr-2">✓</span> 迅速な意思決定と実行力</p>
+                                            <p class="flex items-center"><span class="text-orange-500 mr-2">✓</span> 「稼いで再投資」する循環モデル</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="comparison-card">
+                            <div class="hamamatsu-header">浜松市</div>
+                            <div class="p-6 flex-grow flex flex-col justify-center items-center bg-white">
+                                <div class="text-center">
+                                    <div class="p-6 bg-blue-50 rounded-lg border-2 border-dashed border-blue-300">
+                                        <h4 class="text-xl font-bold text-blue-800">浜松市役所</h4>
+                                        <p class="text-sm font-bold text-blue-600 mt-1">企画調整部 企画課</p>
+                                         <div class="mt-4 space-y-2 text-left">
+                                            <p class="flex items-center"><span class="text-blue-500 mr-2">✓</span> 行政手続きに基づく運営</p>
+                                            <p class="flex items-center"><span class="text-blue-500 mr-2">✓</span> 総合計画に沿った事業提示</p>
+                                            <p class="flex items-center"><span class="text-blue-500 mr-2">✓</span> 問い合わせ窓口として機能</p>
+                                            <p class="flex items-center"><span class="text-blue-500 mr-2">✓</span> 受動的な情報発信が中心</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tab 3: Project Appeal -->
+                <section id="tab-content-3" class="tab-content content-hidden">
+                    <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-slate-800">企業が「投資したい」と思うプロジェクトか？</h2>
+                        <p class="text-slate-500">新富町は具体的で共感を呼ぶ「物語」を提示。浜松市は抽象的な政策メニューの羅列に留まる傾向。</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="comparison-card bg-white">
+                            <div class="shintomi-header">新富町のプロジェクト例</div>
+                            <div class="p-6 space-y-4">
+                                <div class="p-4 border rounded-lg hover:shadow-lg transition-shadow">
+                                    <h4 class="font-bold text-lg">⚽ 女子アスリートによる地域活性化</h4>
+                                    <p class="text-sm text-slate-600 mt-1">女子サッカーチーム「ヴィアマテラス宮崎」を支援し、女性活躍と地域振興を実現。企業のCSR活動としてPRしやすい。</p>
+                                </div>
+                                <div class="p-4 border rounded-lg hover:shadow-lg transition-shadow">
+                                    <h4 class="font-bold text-lg">🚕 交通弱者を救うデマンドタクシー</h4>
+                                    <p class="text-sm text-slate-600 mt-1">高齢者等の移動手段を確保する「トヨタク」導入。地域課題解決への貢献が明確で、成果が見えやすい。</p>
+                                </div>
+                                 <div class="p-4 border rounded-lg hover:shadow-lg transition-shadow">
+                                    <h4 class="font-bold text-lg">🏟️ スタジアム照明整備</h4>
+                                    <p class="text-sm text-slate-600 mt-1">夜間試合を可能にし、スポーツ振興と交流人口拡大に貢献。寄附の使途が具体的でインパクトが大きい。</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="comparison-card bg-white">
+                            <div class="hamamatsu-header">浜松市</div>
+                             <div class="p-6 space-y-4">
+                                <div class="p-4 border rounded-lg hover:shadow-lg transition-shadow">
+                                    <h4 class="font-bold text-lg">💼 産業、雇用の創出</h4>
+                                    <p class="text-sm text-slate-600 mt-1">企業立地推進やスタートアップ人材育成など、広範な事業メニュー。企業がどの部分に貢献するのかイメージしにくい。</p>
+                                </div>
+                                <div class="p-4 border rounded-lg hover:shadow-lg transition-shadow">
+                                    <h4 class="font-bold text-lg">🌳 自然との共生・持続可能な社会</h4>
+                                    <p class="text-sm text-slate-600 mt-1">カーボンクレジット創出やウエルネスシティ実現など。重要だが、個々の企業の関心との接続が難しい。</p>
+                                </div>
+                                 <div class="p-4 border rounded-lg hover:shadow-lg transition-shadow">
+                                    <h4 class="font-bold text-lg">🏯 地域文化の創造・魅力発信</h4>
+                                    <p class="text-sm text-slate-600 mt-1">家康公ゆかりの地ブランド確立など。寄附による具体的な成果やインパクトが企業に伝わりにくい可能性。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- Tab 4: Conclusion & Recommendations -->
+                <section id="tab-content-4" class="tab-content content-hidden">
+                     <div class="text-center mb-8">
+                        <h2 class="text-2xl font-bold text-slate-800">格差の根源と浜松市への提言</h2>
+                        <p class="text-slate-500">成功には「戦略・体制・魅力・広報」の4要素が不可欠。</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                            <h3 class="text-xl font-bold mb-4 text-slate-800">格差を生む4つの主要因</h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start">
+                                    <span class="text-teal-600 font-bold text-lg mr-3">1</span>
+                                    <div><strong class="text-slate-700">戦略の統合度と事業性：</strong>新富町はふるさと納税を「稼ぐ」手段と位置づけ、地方創生戦略に統合。企業にとって魅力的な「投資先」となっている。</div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-teal-600 font-bold text-lg mr-3">2</span>
+                                    <div><strong class="text-slate-700">組織体制と実行力：</strong>新富町の「こゆ財団」は、行政の枠を超えたアジリティとビジネス感覚を持つ。浜松市は行政組織の硬直性が足かせに。</div>
+                                </li>
+                                <li class="flex items-start">
+                                    <span class="text-teal-600 font-bold text-lg mr-3">3</span>
+                                    <div><strong class="text-slate-700">プロジェクトの魅力と訴求力：</strong>新富町は具体的で共感を呼ぶ「物語」を提示。浜松市は抽象的で企業のCSR戦略と結びつけにくい。</div>
+                                </li>
+                                 <li class="flex items-start">
+                                    <span class="text-teal-600 font-bold text-lg mr-3">4</span>
+                                    <div><strong class="text-slate-700">広報・ブランディングと透明性：</strong>新富町はプロのマーケティングでブランドを構築し、実績を透明性高く公開。これが信頼と次の寄附を呼ぶ。</div>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow-md">
+                             <h3 class="text-xl font-bold mb-4 text-slate-800">浜松市が活性化するための4つの提言</h3>
+                             <div id="recommendations-accordion" class="space-y-2 mb-8">
+                                <div class="border rounded-lg">
+                                    <button class="accordion-header w-full text-left p-4 font-semibold hover:bg-slate-50 flex justify-between items-center">
+                                        1. 推進体制の構築
+                                        <span class="accordion-icon transform rotate-0 transition-transform">▼</span>
+                                    </button>
+                                    <div class="accordion-content p-4 border-t border-slate-200 hidden">
+                                        <p>ビジネス感覚を持つ専任組織（外部連携含む）を設置し、行政の枠を超えた柔軟かつ積極的な活動を展開する。</p>
+                                    </div>
+                                </div>
+                                <div class="border rounded-lg">
+                                    <button class="accordion-header w-full text-left p-4 font-semibold hover:bg-slate-50 flex justify-between items-center">
+                                        2. 魅力的なプロジェクト創出
+                                         <span class="accordion-icon transform rotate-0 transition-transform">▼</span>
+                                    </button>
+                                    <div class="accordion-content p-4 border-t border-slate-200 hidden">
+                                        <p>企業のCSR/SDGsニーズに合致する、具体的で「物語性」のあるプロジェクトを企画・開発し、寄附の「価値」を明確化する。</p>
+                                    </div>
+                                </div>
+                                <div class="border rounded-lg">
+                                    <button class="accordion-header w-full text-left p-4 font-semibold hover:bg-slate-50 flex justify-between items-center">
+                                        3. 積極的な企業アプローチ
+                                         <span class="accordion-icon transform rotate-0 transition-transform">▼</span>
+                                    </button>
+                                    <div class="accordion-content p-4 border-t border-slate-200 hidden">
+                                        <p>潜在寄附企業をリストアップし、個別のニーズに合わせた提案を行うなど、能動的な営業戦略を構築する。市長などトップの関与も重要。</p>
+                                    </div>
+                                </div>
+                                <div class="border rounded-lg">
+                                    <button class="accordion-header w-full text-left p-4 font-semibold hover:bg-slate-50 flex justify-between items-center">
+                                        4. 情報公開の強化と可視化
+                                         <span class="accordion-icon transform rotate-0 transition-transform">▼</span>
+                                    </button>
+                                    <div class="accordion-content p-4 border-t border-slate-200 hidden">
+                                        <p>年間総額や寄附の活用事例を透明性高く公表し、成功を可視化することで、企業の信頼感を高め、次の寄附を呼び込む。</p>
+                                    </div>
+                                </div>
+                             </div>
+
+                             <!-- LLM Feature for Project Ideas -->
+                            <div class="bg-teal-50 p-6 rounded-lg shadow-inner mt-8">
+                                <h3 class="text-xl font-bold text-teal-800 mb-4 text-center">✨ AIアシスタント: プロジェクトアイデア生成</h3>
+                                <p class="text-sm text-teal-700 mb-4 text-center">
+                                    浜松市が企業版ふるさと納税で成功するための、具体的で魅力的なプロジェクトアイデアをAIが提案します。
+                                </p>
+                                <div class="flex justify-center mb-4">
+                                    <button id="generateProjectIdeasBtn" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg">
+                                        ✨ 浜松市向けプロジェクトアイデアを生成
+                                    </button>
+                                </div>
+                                <div id="loadingSpinner" class="loading-spinner mb-4"></div>
+                                <div id="generatedIdeasOutput" class="bg-white p-4 rounded-lg border border-teal-200 text-slate-700 whitespace-pre-wrap min-h-[100px] max-h-[400px] overflow-y-auto hidden">
+                                    <!-- Generated content will appear here -->
+                                </div>
+                                <div id="errorMessage" class="text-red-600 text-center mt-2 hidden">
+                                    アイデアの生成中にエラーが発生しました。もう一度お試しください。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-12 pt-6 border-t border-slate-200">
+            <p class="text-sm text-slate-500">このアプリケーションは提供された分析レポートに基づき、情報デザインの観点から再構成したものです。</p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Data
+            const performanceData = {
+                labels: ['令和3年度', '令和4年度', '令和5年度'],
+                shintomi: [2.19, 3.20, 2.31], // 単位: 億円
+                hamamatsu: [0.05, 0.1, 0.03] // 単位: 億円 (参考値)
+            };
+
+            // Chart.js Initialization
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const performanceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: performanceData.labels,
+                    datasets: [
+                        {
+                            label: '新富町 (億円)',
+                            data: performanceData.shintomi,
+                            backgroundColor: 'rgba(251, 146, 60, 0.6)', // orange-400
+                            borderColor: 'rgba(251, 146, 60, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '浜松市 (億円) ※参考値',
+                            data: performanceData.hamamatsu,
+                            backgroundColor: 'rgba(96, 165, 250, 0.6)', // blue-400
+                            borderColor: 'rgba(96, 165, 250, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '寄附額 (億円)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y + '億円';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Tab Navigation Logic
+            const tabs = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.dataset.tab;
+
+                    tabs.forEach(item => {
+                        item.classList.remove('tab-active');
+                        item.classList.add('tab-inactive');
+                    });
+                    tab.classList.add('tab-active');
+                    tab.classList.remove('tab-inactive');
+
+                    tabContents.forEach(content => {
+                        if (content.id === `tab-content-${tabId}`) {
+                            content.classList.remove('content-hidden');
+                        } else {
+                            content.classList.add('content-hidden');
+                        }
+                    });
+                });
+            });
+
+            // Accordion Logic
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling;
+                    const icon = header.querySelector('.accordion-icon');
+                    
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-180');
+                });
+            });
+
+            // LLM Feature Logic
+            const generateButton = document.getElementById('generateProjectIdeasBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const generatedOutput = document.getElementById('generatedIdeasOutput');
+            const errorMessage = document.getElementById('errorMessage');
+
+            generateButton.addEventListener('click', async () => {
+                loadingSpinner.style.display = 'block';
+                generatedOutput.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+                generatedOutput.textContent = ''; // Clear previous output
+
+                const prompt = `宮崎県新富町は企業版ふるさと納税で成功しています。そのプロジェクトの特徴は、具体的で物語性があり、企業のCSRやSDGsニーズに合致し、成果が見えやすい点です。一方、浜松市のプロジェクトは抽象的で企業が貢献イメージを持ちにくい傾向があります。この情報を踏まえ、浜松市が企業から寄附を得るための、魅力的で具体的な企業版ふるさと納税プロジェクトのアイデアを3つ提案してください。各アイデアについて、プロジェクト名、概要、企業の貢献価値、期待される地域へのインパクトを簡潔に記述し、Markdown形式のリストで出力してください。`;
+
+                try {
+                    let chatHistory = [];
+                    chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                    const payload = { contents: chatHistory };
+                    const apiKey = ""; 
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        generatedOutput.textContent = text;
+                        generatedOutput.classList.remove('hidden');
+                    } else {
+                        errorMessage.classList.remove('hidden');
+                        console.error('Unexpected API response structure:', result);
+                    }
+                } catch (error) {
+                    errorMessage.classList.remove('hidden');
+                    console.error('Error generating project ideas:', error);
+                } finally {
+                    loadingSpinner.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
